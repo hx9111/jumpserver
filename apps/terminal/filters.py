@@ -55,6 +55,20 @@ class CommandFilter(filters.FilterSet):
         return org_id
 
 
+class CommandFilterFake(CommandFilter):
+    asset = filters.CharFilter(method='do_nothing')
+    system_user = filters.CharFilter(method='do_nothing')
+    session = filters.CharFilter(method='do_nothing')
+    risk_level = filters.NumberFilter(method='do_nothing')
+
+    class Meta:
+        model = CommandStorage
+        fields = [
+            'asset', 'system_user', 'user', 'session', 'risk_level', 'input',
+            'date_from', 'date_to', 'session_id', 'risk_level', 'command_storage_id',
+        ]
+
+
 class CommandStorageFilter(filters.FilterSet):
     real = filters.BooleanFilter(method='filter_real')
 

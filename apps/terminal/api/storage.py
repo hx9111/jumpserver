@@ -3,12 +3,14 @@
 
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.decorators import action
 from django.utils.translation import ugettext_lazy as _
+from django_filters import utils
 
 from common.const.http import GET
 from common.permissions import IsSuperUser
-from terminal.filters import CommandStorageFilter
+from terminal.filters import CommandStorageFilter, CommandFilter, CommandFilterFake
 from ..models import CommandStorage, ReplayStorage
 from ..serializers import CommandStorageSerializer, ReplayStorageSerializer
 
@@ -39,10 +41,21 @@ class CommandStorageViewSet(BaseStorageViewSetMixin, viewsets.ModelViewSet):
     permission_classes = (IsSuperUser,)
     filterset_class = CommandStorageFilter
 
-    @action(methods=[GET], detail=False)
-    def tree(self, request):
-        queryset = self.filter_queryset(self.get_queryset())
-        queryset = queryset.exclude(name='null')
+    @action(methods=[GET], detail=False, filterset_class=CommandFilterFake)
+    def tree(self, request: Request):
+        storage_qs = self.get_queryset().exclude(name='null')
+        storages_with_count = []
+        for storage in storage_qs:
+            command_qs = storage.get_command_queryset()
+            filterset = CommandFilter(
+                data=request.query_params, queryset=command_qs,
+                request=request
+            )
+            if not filterset.is_valid():
+                raise utils.translate_validation(filterset.errors)
+            command_qs = filterset.qs
+            command_count = command_qs.count()
+            storages_with_count.append((storage, command_count))
 
         root = {
             'id': 'root',
@@ -56,12 +69,12 @@ class CommandStorageViewSet(BaseStorageViewSetMixin, viewsets.ModelViewSet):
         nodes = [
             {
                 'id': storage.id,
-                'name': storage.name,
+                'name': f'{storage.name}({storage.type})({command_count})',
                 'title': f'{storage.name}({storage.type})',
                 'pId': 'root',
                 'isParent': False,
                 'open': False,
-            } for storage in queryset
+            } for storage, command_count in storages_with_count
         ]
         nodes.append(root)
         return Response(data=nodes)

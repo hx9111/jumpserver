@@ -4,8 +4,8 @@ from datetime import datetime
 from functools import reduce, partial
 from itertools import groupby
 import pytz
+from uuid import UUID
 
-from django.utils import timezone
 from django.db.models import QuerySet as DJQuerySet
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
@@ -59,10 +59,16 @@ class CommandStore():
 
     def filter(self, query: dict, from_=None, size=None, sort=None):
         body = self.get_query_body(**query)
+
+        import json
+        s = json.dumps(body)
+        print(s)
+
         data = self.es.search(
             index=self.index, doc_type=self.doc_type, body=body, from_=from_, size=size,
             sort=sort
         )
+
         return AbstractSessionCommand.from_multi_dict(
             [item['_source'] for item in data['hits']['hits'] if item]
         )
@@ -87,6 +93,11 @@ class CommandStore():
 
     @staticmethod
     def get_query_body(**kwargs):
+        new_kwargs = {}
+        for k, v in kwargs.items():
+            new_kwargs[k] = str(v) if isinstance(v, UUID) else v
+        kwargs = new_kwargs
+
         exact_fields = {'user', 'asset', 'system_user'}
         match_fields = {'session', 'input', 'org_id', 'risk_level'}
 
