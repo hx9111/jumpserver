@@ -116,16 +116,6 @@ class CommandViewSet(viewsets.ModelViewSet):
         qs = storage.get_command_queryset()
         return qs
 
-    @action(methods=[GET], detail=False, url_name='storages-result-count')
-    def storages_result_count(self, request):
-        data = {}
-        storages = CommandStorage.objects.exclude(name='null')
-        for storage in storages:
-            qs = storage.get_command_queryset()
-            qs = self.filter_queryset(qs)
-            data[str(storage.id)] = qs.count()
-        return Response(data=data)
-
     def create(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, many=True)
         if serializer.is_valid():
