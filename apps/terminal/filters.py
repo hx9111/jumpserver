@@ -55,7 +55,7 @@ class CommandFilter(filters.FilterSet):
         return org_id
 
 
-class CommandFilterFake(CommandFilter):
+class CommandFilterForStorageTree(CommandFilter):
     asset = filters.CharFilter(method='do_nothing')
     system_user = filters.CharFilter(method='do_nothing')
     session = filters.CharFilter(method='do_nothing')
