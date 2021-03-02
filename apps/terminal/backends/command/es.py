@@ -98,8 +98,8 @@ class CommandStore():
             new_kwargs[k] = str(v) if isinstance(v, UUID) else v
         kwargs = new_kwargs
 
-        exact_fields = {'user', 'asset', 'system_user'}
-        match_fields = {'session', 'input', 'org_id', 'risk_level'}
+        exact_fields = {}
+        match_fields = {'session', 'input', 'org_id', 'risk_level', 'user', 'asset', 'system_user'}
 
         match = {}
         exact = {}
