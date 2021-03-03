@@ -5,13 +5,13 @@ from functools import reduce, partial
 from itertools import groupby
 import pytz
 from uuid import UUID
+import inspect
 
 from django.db.models import QuerySet as DJQuerySet
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 from common.utils.common import lazyproperty
-from common.utils import isinstance_method
 from common.utils import get_logger
 from .models import AbstractSessionCommand
 
@@ -154,6 +154,7 @@ class QuerySet(DJQuerySet):
     _command_store_config = None
     _slice = None  # (from_, size)
     default_days_ago = 5
+    max_result_window = 10000
 
     def __init__(self, command_store_config):
         self._method_calls = []
@@ -217,9 +218,11 @@ class QuerySet(DJQuerySet):
         uqs._slice = self._slice
         return uqs
 
-    def count(self):
+    def count(self, limit_to_max_result_window=True):
         filter_kwargs = self._filter_kwargs
         count = self._storage.count(**filter_kwargs)
+        if limit_to_max_result_window:
+            count = min(count, self.max_result_window)
         return count
 
     def __getattribute__(self, item):
@@ -230,13 +233,14 @@ class QuerySet(DJQuerySet):
             return object.__getattribute__(self, item)
 
         origin_attr = object.__getattribute__(self, item)
-        if not isinstance_method(origin_attr):
+        if not inspect.ismethod(origin_attr):
             return origin_attr
 
         attr = partial(self.__stage_method_call, item)
         return attr
 
     def __getitem__(self, item):
+        max_window = self.max_result_window
         if isinstance(item, slice):
             if self._slice is None:
                 clone = self.__clone()
@@ -245,6 +249,13 @@ class QuerySet(DJQuerySet):
                     size = 10
                 else:
                     size = item.stop - from_
+
+                if from_ + size > max_window:
+                    if from_ >= max_window:
+                        from_ = max_window
+                        size = 0
+                    else:
+                        size = max_window - from_
                 clone._slice = (from_, size)
                 return clone
         return self.__execute()[item]
