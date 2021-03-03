@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from django.utils.translation import ugettext_lazy as _
 from django_filters import utils
 
+from terminal import const
 from common.const.http import GET
 from common.permissions import IsSuperUser
 from terminal.filters import CommandStorageFilter, CommandFilter, CommandFilterForStorageTree
@@ -54,7 +55,10 @@ class CommandStorageViewSet(BaseStorageViewSetMixin, viewsets.ModelViewSet):
             if not filterset.is_valid():
                 raise utils.translate_validation(filterset.errors)
             command_qs = filterset.qs
-            command_count = command_qs.count()
+            if storage.type == const.CommandStorageTypeChoices.es:
+                command_count = command_qs.count(limit_to_max_result_window=False)
+            else:
+                command_count = command_qs.count()
             storages_with_count.append((storage, command_count))
 
         root = {
