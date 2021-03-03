@@ -109,6 +109,7 @@ class CommandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOrgAdminOrAppUser | IsOrgAuditor]
     serializer_class = SessionCommandSerializer
     filterset_class = CommandFilter
+    ordering_fields = ('timestamp', )
 
     def get_queryset(self):
         command_storage_id = self.request.query_params.get('command_storage_id')
